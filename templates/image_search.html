@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP 앨범 이미지 검색</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .stats-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px 20px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 이미지 업로드 영역 */
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8e8ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .search-button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        .search-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 텍스트 검색 영역 */
+        .text-search-container {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.1em;
+            transition: all 0.3s;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* 로딩 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 검색 결과 */
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .results-title {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        .results-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .result-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .result-info {
+            padding: 15px;
+        }
+
+        .result-rank {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .result-similarity {
+            float: right;
+            background: #27ae60;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .result-genre {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .result-filename {
+            color: #666;
+            font-size: 0.9em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 메시지 */
+        .message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1>🎵 LP 앨범 이미지 검색</h1>
+            <p>86,171개의 LP 앨범에서 유사한 이미지를 찾아보세요</p>
+        </div>
+
+        <!-- 통계 바 -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item">
+                <div class="stat-value" id="totalImages">-</div>
+                <div class="stat-label">총 이미지</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalGenres">-</div>
+                <div class="stat-label">장르</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="searchSpeed">-</div>
+                <div class="stat-label">검색 속도 (ms)</div>
+            </div>
+        </div>
+
+        <!-- 검색 섹션 -->
+        <div class="search-section">
+            <div class="message" id="message"></div>
+
+            <!-- 탭 -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('image')">
+                    🖼️ 이미지 검색
+                </button>
+                <button class="tab" onclick="switchTab('text')">
+                    💬 텍스트 검색
+                </button>
+            </div>
+
+            <!-- 이미지 검색 탭 -->
+            <div class="tab-content active" id="imageTab">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">이미지를 드래그하거나 클릭하여 업로드하세요</div>
+                    <div class="upload-subtext">JPG, PNG 형식 지원</div>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+
+                <div class="preview-container" id="previewContainer" style="display: none;">
+                    <img id="previewImage" class="preview-image" src="" alt="미리보기">
+                    <br>
+                    <button class="search-button" onclick="searchByImage()">
+                        🔍 유사한 이미지 검색
+                    </button>
+                </div>
+            </div>
+
+            <!-- 텍스트 검색 탭 -->
+            <div class="tab-content" id="textTab">
+                <div class="text-search-container">
+                    <input 
+                        type="text" 
+                        class="text-input" 
+                        id="textInput" 
+                        placeholder="검색어를 입력하세요 (예: jazz album, rock music, classical piano)"
+                        onkeypress="handleTextInputKeypress(event)"
+                    >
+                    <button class="search-button" onclick="searchByText()">
+                        🔍 검색
+                    </button>
+                </div>
+                <div style="margin-top: 20px; color: #666; font-size: 0.9em;">
+                    <strong>예시:</strong> "jazz album", "rock music", "classical piano", "vintage vinyl cover"
+                </div>
+            </div>
+
+            <!-- 로딩 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>검색 중...</div>
+            </div>
+        </div>
+
+        <!-- 검색 결과 -->
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">🎯 검색 결과</div>
+                <div class="results-info">
+                    <span id="resultCount">0</span>개 결과 | 
+                    검색 시간: <span id="queryTime">0</span>ms
+                </div>
+            </div>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let currentFile = null;
+
+        // 페이지 로드 시 통계 로드
+        window.onload = function() {
+            loadStats();
+        };
+
+        // 통계 로드
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const data = await response.json();
+                
+                document.getElementById('totalImages').textContent = data.total_images.toLocaleString();
+                document.getElementById('totalGenres').textContent = data.total_genres;
+                document.getElementById('searchSpeed').textContent = data.search_speed_ms.toFixed(2);
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 탭 전환
+        function switchTab(tab) {
+            // 탭 버튼
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 탭 콘텐츠
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            if (tab === 'image') {
+                document.getElementById('imageTab').classList.add('active');
+            } else {
+                document.getElementById('textTab').classList.add('active');
+            }
+
+            // 결과 숨기기
+            document.getElementById('resultsSection').classList.remove('show');
+        }
+
+        // 파일 업로드 영역 설정
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // 파일 처리
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showMessage('이미지 파일만 업로드할 수 있습니다.', 'error');
+                return;
+            }
+
+            currentFile = file;
+
+            // 미리보기 표시
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('previewContainer').style.display = 'block';
+                document.getElementById('resultsSection').classList.remove('show');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 이미지 검색
+        async function searchByImage() {
+            if (!currentFile) {
+                showMessage('먼저 이미지를 업로드하세요.', 'error');
+                return;
+            }
+
+            showLoading(true);
+            hideMessage();
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                const response = await fetch(`${API_URL}/search/image?top_k=20`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                    showMessage(`${data.total_results}개의 유사한 이미지를 찾았습니다!`, 'success');
+                } else {
+                    showMessage('검색에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 텍스트 검색
+        async function searchByText() {
+            const query = document.getElementById('textInput').value.trim();
+            
+            if (!query) {
+                showMessage('검색어를 입력하세요.', 'error');
+                return;
+            }
+
+            showLoading(true);
+            hideMessage();
+
+            try {
+                const response = await fetch(
+                    `${API_URL}/search/text?query=${encodeURIComponent(query)}&top_k=20`,
+                    { method: 'POST' }
+                );
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                    showMessage(`"${query}" 검색 결과: ${data.total_results}개`, 'success');
+                } else {
+                    showMessage('검색에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 텍스트 입력 엔터키 처리
+        function handleTextInputKeypress(event) {
+            if (event.key === 'Enter') {
+                searchByText();
+            }
+        }
+
+        // 검색 결과 표시
+        function displayResults(data) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            resultsGrid.innerHTML = '';
+
+            document.getElementById('resultCount').textContent = data.total_results;
+            document.getElementById('queryTime').textContent = data.query_time_ms.toFixed(2);
+
+            data.results.forEach(result => {
+                const card = createResultCard(result);
+                resultsGrid.appendChild(card);
+            });
+
+            document.getElementById('resultsSection').classList.add('show');
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 결과 카드 생성
+        function createResultCard(result) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.onclick = () => showImageDetail(result);
+
+            const similarityPercent = (result.similarity * 100).toFixed(1);
+
+            card.innerHTML = `
+                <img class="result-image" src="${API_URL}/image/${result.image_id}" alt="${result.filename}">
+                <div class="result-info">
+                    <div>
+                        <span class="result-rank">#${result.rank}</span>
+                        <span class="result-similarity">${similarityPercent}%</span>
+                    </div>
+                    <div class="result-genre">${result.genre}</div>
+                    <div class="result-filename" title="${result.filename}">${result.filename}</div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // 이미지 상세 정보 (새 탭에서 열기)
+        function showImageDetail(result) {
+            const url = `${API_URL}/image/${result.image_id}`;
+            window.open(url, '_blank');
+        }
+
+        // 로딩 표시
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
+        }
+
+        // 메시지 표시
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type} show`;
+        }
+
+        // 메시지 숨기기
+        function hideMessage() {
+            document.getElementById('message').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
+

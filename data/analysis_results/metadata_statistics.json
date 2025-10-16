@@ -1,0 +1,31 @@
+{
+  "total_records": 86213,
+  "columns": [
+    "genre",
+    "artists",
+    "title",
+    "release_id",
+    "released",
+    "year",
+    "country",
+    "genres",
+    "styles",
+    "image_url",
+    "image_file"
+  ],
+  "null_counts": {
+    "genre": 0,
+    "artists": 0,
+    "title": 0,
+    "release_id": 0,
+    "released": 13574,
+    "year": 0,
+    "country": 716,
+    "genres": 0,
+    "styles": 14438,
+    "image_url": 0,
+    "image_file": 0
+  },
+  "unique_artists": 14219,
+  "unique_genres": 14
+}

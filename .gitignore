@@ -200,6 +200,11 @@ instance/
 *.pt
 *.h5
 
+# 데이터 & 로그
+/data/raw/
+/data/csv/
+/data/logs/
+
 # 모델 학습 결과 저장 경로 무시
 models/checkpoints/
 models/saved_models/

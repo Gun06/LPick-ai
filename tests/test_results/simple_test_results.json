@@ -1,0 +1,21 @@
+{
+  "tests_passed": 2,
+  "tests_failed": 2,
+  "details": [
+    {
+      "test": "health_check",
+      "status": "passed"
+    },
+    {
+      "test": "stats_api",
+      "status": "passed",
+      "data": {
+        "total_images": 86171,
+        "total_genres": 14,
+        "index_type": "IndexFlatL2",
+        "embedding_dimension": 512,
+        "search_speed_ms": 4.53
+      }
+    }
+  ]
+}

@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP 바운딩 박스 라벨링 도구</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 왼쪽 사이드바 */
+        .sidebar {
+            width: 200px;
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 15px;
+            color: #ecf0f1;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .sidebar button:hover {
+            background: #3498db;
+        }
+
+        .sidebar button.active {
+            background: #e74c3c;
+        }
+
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .file-item {
+            padding: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            border-radius: 3px;
+            margin-bottom: 2px;
+            background: #34495e;
+        }
+
+        .file-item:hover {
+            background: #3498db;
+        }
+
+        .file-item.current {
+            background: #e74c3c;
+        }
+
+        /* 메인 이미지 영역 */
+        .image-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .image-container {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: #ecf0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: crosshair;
+        }
+
+        .image-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+
+        .bbox {
+            position: absolute;
+            border: 2px solid #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            cursor: move;
+        }
+
+        .bbox.selected {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.2);
+        }
+
+        .bbox-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .bbox.selected .bbox-label {
+            background: #f39c12;
+        }
+
+        .bbox-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #e74c3c;
+            border: 1px solid white;
+            border-radius: 50%;
+        }
+
+        .bbox.selected .bbox-handle {
+            background: #f39c12;
+        }
+
+        .bbox-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+        .bbox-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+        .bbox-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+        .bbox-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+
+        /* 오른쪽 사이드바 */
+        .right-sidebar {
+            width: 250px;
+            background: #ecf0f1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .right-sidebar h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .label-section {
+            margin-bottom: 20px;
+        }
+
+        .label-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .label-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .label-btn {
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .label-btn:hover {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .label-btn.active {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+        }
+
+        .bbox-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .bbox-item {
+            padding: 8px;
+            border-bottom: 1px solid #ecf0f1;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bbox-item:hover {
+            background: #f8f9fa;
+        }
+
+        .bbox-item.selected {
+            background: #e3f2fd;
+        }
+
+        .bbox-item:last-child {
+            border-bottom: none;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        /* 상태바 */
+        .status-bar {
+            height: 30px;
+            background: #34495e;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            font-size: 12px;
+        }
+
+        .status-item {
+            margin-right: 20px;
+        }
+
+        /* 메시지 */
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        .message.success {
+            background: #27ae60;
+        }
+
+        .message.error {
+            background: #e74c3c;
+        }
+
+        .message.info {
+            background: #3498db;
+        }
+
+        /* 로딩 */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* 숨김 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 왼쪽 사이드바 -->
+        <div class="sidebar">
+            <h3>파일</h3>
+            <button onclick="openImage()">📁 이미지 열기</button>
+            <button onclick="openDirectory()">📂 폴더 열기</button>
+            <button onclick="changeSaveDir()">💾 저장 위치 변경</button>
+            <button onclick="nextImage()">▶️ 다음 이미지</button>
+            <button onclick="prevImage()">◀️ 이전 이미지</button>
+            <button onclick="verifyImage()">✅ 이미지 확인</button>
+            <button onclick="saveAnnotations()">💾 저장</button>
+            
+            <h3>파일 목록</h3>
+            <div class="file-list" id="fileList">
+                <!-- 파일 목록이 여기에 표시됩니다 -->
+            </div>
+        </div>
+
+        <!-- 메인 이미지 영역 -->
+        <div class="image-section">
+            <div class="image-container" id="imageContainer">
+                <div class="loading" id="loading">이미지를 로딩 중...</div>
+                <div class="image-wrapper" id="imageWrapper" style="display: none;">
+                    <img id="currentImage" src="" alt="현재 이미지">
+                    <!-- 바운딩 박스들이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+            
+            <!-- 상태바 -->
+            <div class="status-bar">
+                <div class="status-item">이미지: <span id="currentImageName">-</span></div>
+                <div class="status-item">크기: <span id="imageSize">-</span></div>
+                <div class="status-item">바운딩 박스: <span id="bboxCount">0</span></div>
+                <div class="status-item">모드: <span id="labelingMode">라벨링</span></div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 사이드바 -->
+        <div class="right-sidebar">
+            <h3>라벨 편집</h3>
+            <div class="label-section">
+                <input type="text" class="label-input" id="labelInput" placeholder="라벨 입력" value="front">
+                <div class="label-buttons">
+                    <button class="label-btn active" onclick="setLabel('front')">앞면</button>
+                    <button class="label-btn" onclick="setLabel('back')">뒤면</button>
+                    <button class="label-btn" onclick="setLabel('inner')">속지</button>
+                    <button class="label-btn" onclick="setLabel('disk')">LP판</button>
+                </div>
+            </div>
+
+            <h3>바운딩 박스 목록</h3>
+            <div class="bbox-list" id="bboxList">
+                <!-- 바운딩 박스 목록이 여기에 표시됩니다 -->
+            </div>
+
+            <h3>단축키</h3>
+            <div style="font-size: 11px; color: #7f8c8d; line-height: 1.4;">
+                <div><strong>Ctrl + S:</strong> 저장</div>
+                <div><strong>Ctrl + N:</strong> 새 이미지</div>
+                <div><strong>Delete:</strong> 선택된 박스 삭제</div>
+                <div><strong>1-4:</strong> 라벨 선택</div>
+                <div><strong>Space:</strong> 다음 이미지</div>
+                <div><strong>Backspace:</strong> 이전 이미지</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메시지 -->
+    <div class="message" id="message"></div>
+
+    <script>
+        // 전역 변수
+        let currentImage = null;
+        let currentImagePath = null;
+        let imageFiles = [];
+        let currentImageIndex = 0;
+        let bboxes = [];
+        let selectedBbox = null;
+        let isDrawing = false;
+        let startX = 0;
+        let startY = 0;
+        let currentLabel = 'front';
+        let saveDir = 'annotations';
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            loadImageList();
+            setupEventListeners();
+        };
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 키보드 단축키
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // 이미지 클릭 이벤트
+            const imageWrapper = document.getElementById('imageWrapper');
+            imageWrapper.addEventListener('mousedown', startDrawing);
+            imageWrapper.addEventListener('mousemove', drawBbox);
+            imageWrapper.addEventListener('mouseup', endDrawing);
+            imageWrapper.addEventListener('click', selectBbox);
+        }
+
+        // 키보드 단축키 처리
+        function handleKeyPress(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveAnnotations();
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        openImage();
+                        break;
+                }
+            } else {
+                switch(e.key) {
+                    case 'Delete':
+                        deleteSelectedBbox();
+                        break;
+                    case '1':
+                        setLabel('front');
+                        break;
+                    case '2':
+                        setLabel('back');
+                        break;
+                    case '3':
+                        setLabel('inner');
+                        break;
+                    case '4':
+                        setLabel('disk');
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        nextImage();
+                        break;
+                    case 'Backspace':
+                        e.preventDefault();
+                        prevImage();
+                        break;
+                }
+            }
+        }
+
+        // 이미지 목록 로드
+        async function loadImageList() {
+            try {
+                const response = await fetch('/api/bbox_image_list');
+                const data = await response.json();
+                
+                if (data.success) {
+                    imageFiles = data.image_files;
+                    displayFileList();
+                    if (imageFiles.length > 0) {
+                        loadImage(0);
+                    }
+                }
+            } catch (error) {
+                showMessage('이미지 목록 로드 실패: ' + error.message, 'error');
+            }
+        }
+
+        // 파일 목록 표시
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            imageFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.textContent = file.name;
+                fileItem.onclick = () => loadImage(index);
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        // 이미지 로드
+        async function loadImage(index) {
+            if (index < 0 || index >= imageFiles.length) return;
+            
+            currentImageIndex = index;
+            currentImagePath = imageFiles[index].path;
+            
+            try {
+                const response = await fetch(`/api/bbox_image/${index}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayImage(data);
+                    loadAnnotations(data.image_path);
+                    updateFileList();
+                } else {
+                    showMessage('이미지 로드 실패: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('이미지 로드 실패: ' + error.message, 'error');
+            }
+        }
+
+        // 이미지 표시
+        function displayImage(data) {
+            const imageWrapper = document.getElementById('imageWrapper');
+            const currentImage = document.getElementById('currentImage');
+            const loading = document.getElementById('loading');
+            
+            currentImage.src = data.image_base64;
+            currentImage.onload = () => {
+                loading.style.display = 'none';
+                imageWrapper.style.display = 'block';
+                updateImageInfo(data);
+            };
+            
+            // 기존 바운딩 박스 제거
+            clearBboxes();
+        }
+
+        // 이미지 정보 업데이트
+        function updateImageInfo(data) {
+            document.getElementById('currentImageName').textContent = data.image_name;
+            document.getElementById('imageSize').textContent = `${data.image_info.width} × ${data.image_info.height}`;
+        }
+
+        // 파일 목록 업데이트
+        function updateFileList() {
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach((item, index) => {
+                item.classList.toggle('current', index === currentImageIndex);
+            });
+        }
+
+        // 바운딩 박스 그리기 시작
+        function startDrawing(e) {
+            if (e.target.tagName === 'IMG') {
+                isDrawing = true;
+                const rect = e.target.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+            }
+        }
+
+        // 바운딩 박스 그리기
+        function drawBbox(e) {
+            if (!isDrawing || e.target.tagName !== 'IMG') return;
+            
+            const rect = e.target.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // 임시 바운딩 박스 표시
+            showTempBbox(startX, startY, currentX, currentY);
+        }
+
+        // 바운딩 박스 그리기 종료
+        function endDrawing(e) {
+            if (!isDrawing) return;
+            
+            isDrawing = false;
+            const rect = e.target.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // 바운딩 박스 생성
+            const bbox = createBbox(startX, startY, endX, endY);
+            if (bbox) {
+                addBbox(bbox);
+            }
+            
+            // 임시 바운딩 박스 제거
+            removeTempBbox();
+        }
+
+        // 임시 바운딩 박스 표시
+        function showTempBbox(x1, y1, x2, y2) {
+            removeTempBbox();
+            
+            const bbox = document.createElement('div');
+            bbox.id = 'tempBbox';
+            bbox.style.position = 'absolute';
+            bbox.style.border = '2px dashed #e74c3c';
+            bbox.style.background = 'rgba(231, 76, 60, 0.1)';
+            bbox.style.pointerEvents = 'none';
+            
+            const left = Math.min(x1, x2);
+            const top = Math.min(y1, y2);
+            const width = Math.abs(x2 - x1);
+            const height = Math.abs(y2 - y1);
+            
+            bbox.style.left = left + 'px';
+            bbox.style.top = top + 'px';
+            bbox.style.width = width + 'px';
+            bbox.style.height = height + 'px';
+            
+            document.getElementById('imageWrapper').appendChild(bbox);
+        }
+
+        // 임시 바운딩 박스 제거
+        function removeTempBbox() {
+            const tempBbox = document.getElementById('tempBbox');
+            if (tempBbox) {
+                tempBbox.remove();
+            }
+        }
+
+        // 바운딩 박스 생성
+        function createBbox(x1, y1, x2, y2) {
+            const left = Math.min(x1, x2);
+            const top = Math.min(y1, y2);
+            const width = Math.abs(x2 - x1);
+            const height = Math.abs(y2 - y1);
+            
+            // 최소 크기 체크
+            if (width < 10 || height < 10) {
+                return null;
+            }
+            
+            const img = document.getElementById('currentImage');
+            const imgWidth = img.naturalWidth;
+            const imgHeight = img.naturalHeight;
+            const displayWidth = img.offsetWidth;
+            const displayHeight = img.offsetHeight;
+            
+            // 상대 좌표로 변환
+            const relativeLeft = left / displayWidth;
+            const relativeTop = top / displayHeight;
+            const relativeWidth = width / displayWidth;
+            const relativeHeight = height / displayHeight;
+            
+            return {
+                id: Date.now(),
+                label: currentLabel,
+                x: relativeLeft,
+                y: relativeTop,
+                width: relativeWidth,
+                height: relativeHeight,
+                displayX: left,
+                displayY: top,
+                displayWidth: width,
+                displayHeight: height
+            };
+        }
+
+        // 바운딩 박스 추가
+        function addBbox(bbox) {
+            bboxes.push(bbox);
+            renderBbox(bbox);
+            updateBboxList();
+            updateBboxCount();
+        }
+
+        // 바운딩 박스 렌더링
+        function renderBbox(bbox) {
+            const imageWrapper = document.getElementById('imageWrapper');
+            const bboxElement = document.createElement('div');
+            bboxElement.className = 'bbox';
+            bboxElement.dataset.bboxId = bbox.id;
+            
+            const img = document.getElementById('currentImage');
+            const displayWidth = img.offsetWidth;
+            const displayHeight = img.offsetHeight;
+            
+            bboxElement.style.left = (bbox.x * displayWidth) + 'px';
+            bboxElement.style.top = (bbox.y * displayHeight) + 'px';
+            bboxElement.style.width = (bbox.width * displayWidth) + 'px';
+            bboxElement.style.height = (bbox.height * displayHeight) + 'px';
+            
+            // 라벨 표시
+            const labelElement = document.createElement('div');
+            labelElement.className = 'bbox-label';
+            labelElement.textContent = bbox.label;
+            bboxElement.appendChild(labelElement);
+            
+            // 핸들 추가
+            const handles = ['nw', 'ne', 'sw', 'se'];
+            handles.forEach(handle => {
+                const handleElement = document.createElement('div');
+                handleElement.className = `bbox-handle ${handle}`;
+                bboxElement.appendChild(handleElement);
+            });
+            
+            // 클릭 이벤트
+            bboxElement.onclick = (e) => {
+                e.stopPropagation();
+                selectBboxById(bbox.id);
+            };
+            
+            imageWrapper.appendChild(bboxElement);
+        }
+
+        // 바운딩 박스 선택
+        function selectBboxById(bboxId) {
+            // 기존 선택 해제
+            document.querySelectorAll('.bbox').forEach(bbox => {
+                bbox.classList.remove('selected');
+            });
+            
+            // 새 선택
+            const bboxElement = document.querySelector(`[data-bbox-id="${bboxId}"]`);
+            if (bboxElement) {
+                bboxElement.classList.add('selected');
+                selectedBbox = bboxId;
+                updateBboxList();
+            }
+        }
+
+        // 바운딩 박스 클릭으로 선택
+        function selectBbox(e) {
+            if (e.target.classList.contains('bbox')) {
+                const bboxId = parseInt(e.target.dataset.bboxId);
+                selectBboxById(bboxId);
+            } else {
+                // 바운딩 박스가 아닌 곳 클릭 시 선택 해제
+                document.querySelectorAll('.bbox').forEach(bbox => {
+                    bbox.classList.remove('selected');
+                });
+                selectedBbox = null;
+                updateBboxList();
+            }
+        }
+
+        // 바운딩 박스 목록 업데이트
+        function updateBboxList() {
+            const bboxList = document.getElementById('bboxList');
+            bboxList.innerHTML = '';
+            
+            bboxes.forEach(bbox => {
+                const bboxItem = document.createElement('div');
+                bboxItem.className = 'bbox-item';
+                if (selectedBbox === bbox.id) {
+                    bboxItem.classList.add('selected');
+                }
+                
+                bboxItem.innerHTML = `
+                    <span>${bbox.label} (${Math.round(bbox.x * 100)}, ${Math.round(bbox.y * 100)})</span>
+                    <button class="delete-btn" onclick="deleteBbox(${bbox.id})">×</button>
+                `;
+                
+                bboxItem.onclick = () => selectBboxById(bbox.id);
+                bboxList.appendChild(bboxItem);
+            });
+        }
+
+        // 바운딩 박스 개수 업데이트
+        function updateBboxCount() {
+            document.getElementById('bboxCount').textContent = bboxes.length;
+        }
+
+        // 바운딩 박스 삭제
+        function deleteBbox(bboxId) {
+            bboxes = bboxes.filter(bbox => bbox.id !== bboxId);
+            const bboxElement = document.querySelector(`[data-bbox-id="${bboxId}"]`);
+            if (bboxElement) {
+                bboxElement.remove();
+            }
+            updateBboxList();
+            updateBboxCount();
+            
+            if (selectedBbox === bboxId) {
+                selectedBbox = null;
+            }
+        }
+
+        // 선택된 바운딩 박스 삭제
+        function deleteSelectedBbox() {
+            if (selectedBbox !== null) {
+                deleteBbox(selectedBbox);
+            }
+        }
+
+        // 모든 바운딩 박스 제거
+        function clearBboxes() {
+            bboxes = [];
+            selectedBbox = null;
+            document.querySelectorAll('.bbox').forEach(bbox => bbox.remove());
+            updateBboxList();
+            updateBboxCount();
+        }
+
+        // 라벨 설정
+        function setLabel(label) {
+            currentLabel = label;
+            document.getElementById('labelInput').value = label;
+            
+            // 버튼 상태 업데이트
+            document.querySelectorAll('.label-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // 어노테이션 로드
+        async function loadAnnotations(imagePath) {
+            try {
+                const response = await fetch(`/api/bbox_annotations/${encodeURIComponent(imagePath)}`);
+                const data = await response.json();
+                
+                if (data.success && data.annotations) {
+                    bboxes = data.annotations;
+                    clearBboxes();
+                    bboxes.forEach(bbox => renderBbox(bbox));
+                    updateBboxList();
+                    updateBboxCount();
+                }
+            } catch (error) {
+                console.log('어노테이션 로드 실패:', error);
+            }
+        }
+
+        // 어노테이션 저장
+        async function saveAnnotations() {
+            if (!currentImagePath) {
+                showMessage('저장할 이미지가 없습니다.', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/bbox_save_annotations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_path: currentImagePath,
+                        annotations: bboxes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('어노테이션이 저장되었습니다.', 'success');
+                } else {
+                    showMessage('저장 실패: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('저장 실패: ' + error.message, 'error');
+            }
+        }
+
+        // 다음 이미지
+        function nextImage() {
+            if (currentImageIndex < imageFiles.length - 1) {
+                loadImage(currentImageIndex + 1);
+            }
+        }
+
+        // 이전 이미지
+        function prevImage() {
+            if (currentImageIndex > 0) {
+                loadImage(currentImageIndex - 1);
+            }
+        }
+
+        // 이미지 열기
+        function openImage() {
+            showMessage('이미지 열기 기능은 구현 중입니다.', 'info');
+        }
+
+        // 폴더 열기
+        function openDirectory() {
+            showMessage('폴더 열기 기능은 구현 중입니다.', 'info');
+        }
+
+        // 저장 위치 변경
+        function changeSaveDir() {
+            showMessage('저장 위치 변경 기능은 구현 중입니다.', 'info');
+        }
+
+        // 이미지 확인
+        function verifyImage() {
+            showMessage('이미지 확인 기능은 구현 중입니다.', 'info');
+        }
+
+        // 메시지 표시
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type} show`;
+            
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
