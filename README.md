@@ -192,43 +192,6 @@ API 응답:         15-20ms (전체)
 
 ---
 
-## 🏷️ 라벨링 도구
-
-### 카테고리 라벨링 (이미지 분류용)
-
-```bash
-# 웹 기반 라벨링 도구
-python tools/labeling/web_labeling.py \
-  --data_dir data/raw/discogs \
-  --output_dir data/processed/labeled \
-  --port 5000
-
-# 또는 간단 실행
-python scripts/run_labeling.py
-```
-
-**특징:**
-
-- 브라우저 기반 직관적 UI
-- 키보드 단축키 (1:앞면, 2:뒤면, 3:속지, 4:LP판)
-- 자동 저장 및 진행상황 복원
-
-### 바운딩 박스 라벨링 (객체 검출용)
-
-```bash
-# labelImg 스타일 라벨링 도구
-python scripts/run_bbox_labeling.py
-```
-
-**특징:**
-
-- 마우스 드래그로 박스 생성
-- YOLO 형식 어노테이션
-- 4가지 라벨 지원
-- 키보드 단축키 (1-4: 라벨, Space: 다음, Delete: 삭제)
-
----
-
 ## 📊 프로젝트 워크플로우
 
 ### 1. 이미지 검색 시스템 (완료 ✅)
@@ -296,9 +259,6 @@ lpick-ai/
 │   └── model_selection_experiment.py  # 모델 비교 실험
 │
 ├── tools/                        # 개발 도구
-│   ├── labeling/                 # 라벨링 도구
-│   │   ├── web_labeling.py       # 카테고리 라벨링
-│   │   └── bbox_labeling_server.py  # 바운딩 박스 라벨링
 │   └── analysis/                 # 분석 도구
 │       └── analyze_crawled_data.py  # 데이터 분석
 │
@@ -309,9 +269,7 @@ lpick-ai/
 │   └── test_results/             # 테스트 결과
 │
 ├── templates/                    # HTML 템플릿
-│   ├── image_search.html         # 검색 UI
-│   ├── labeling.html             # 라벨링 UI
-│   └── bbox_labeling.html        # 바운딩 박스 UI
+│   └── image_search.html         # 검색 UI
 │
 ├── models/                       # 모델 파일
 │   ├── saved_models/             # 학습된 모델
@@ -346,12 +304,11 @@ lpick-ai/
 
 ### 이미지 분류 시스템
 
-| 구성 요소 | 기술          | 용도           |
-| --------- | ------------- | -------------- |
-| 모델      | ResNet/CLIP   | 이미지 분류    |
-| 학습      | PyTorch       | 모델 학습      |
-| 데이터    | Pillow/OpenCV | 이미지 처리    |
-| 라벨링    | Flask         | 라벨링 도구 UI |
+| 구성 요소 | 기술          | 용도        |
+| --------- | ------------- | ----------- |
+| 모델      | ResNet/CLIP   | 이미지 분류 |
+| 학습      | PyTorch       | 모델 학습   |
+| 데이터    | Pillow/OpenCV | 이미지 처리 |
 
 ---
 

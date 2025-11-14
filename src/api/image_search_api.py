@@ -14,6 +14,7 @@ import sys
 import time
 import json
 import base64
+import requests
 from pathlib import Path
 from typing import List, Optional
 from io import BytesIO
@@ -64,6 +65,8 @@ class SearchResult(BaseModel):
     genre: str
     filename: str
     image_path: str
+    release_id: Optional[int] = None
+    title: Optional[str] = None
 
 class SearchResponse(BaseModel):
     """검색 응답"""
@@ -109,7 +112,12 @@ def load_clip_model():
     """CLIP 모델 로드"""
     global clip_model, clip_processor, device
     
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
     
     print(f"🤖 CLIP 모델 로드 중... (device: {device})")
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
@@ -165,6 +173,7 @@ async def api_info():
         "endpoints": {
             "web_ui": "GET /",
             "search_image": "POST /search/image",
+            "search_image_url": "POST /search/image_url",
             "search_text": "POST /search/text",
             "get_metadata": "GET /metadata/{image_id}",
             "stats": "GET /stats"
@@ -223,7 +232,9 @@ async def search_by_image(
                     distance=round(float(dist), 4),
                     genre=meta['genre'],
                     filename=meta['filename'],
-                    image_path=meta['path']
+                    image_path=meta['path'],
+                    release_id=meta.get('release_id'),
+                    title=meta.get('title')
                 ))
         
         query_time = (time.time() - start_time) * 1000  # ms
@@ -283,7 +294,9 @@ async def search_by_text(
                     distance=round(float(dist), 4),
                     genre=meta['genre'],
                     filename=meta['filename'],
-                    image_path=meta['path']
+                    image_path=meta['path'],
+                    release_id=meta.get('release_id'),
+                    title=meta.get('title')
                 ))
         
         query_time = (time.time() - start_time) * 1000
@@ -295,6 +308,81 @@ async def search_by_text(
             results=results
         )
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"검색 실패: {str(e)}")
+
+@app.post("/search/image_url", response_model=SearchResponse)
+async def search_by_image_url(
+    image_url: str = Query(..., description="검색할 이미지 URL"),
+    top_k: int = Query(10, ge=1, le=50, description="반환할 결과 개수")
+):
+    """
+    이미지 URL로 유사한 LP 앨범 검색
+    
+    Args:
+        image_url: 검색할 이미지의 URL
+        top_k: 반환할 결과 개수 (기본: 10, 최대: 50)
+    
+    Returns:
+        검색 결과 및 메타데이터
+    """
+    start_time = time.time()
+    
+    try:
+        # URL에서 이미지 다운로드
+        print(f"🔗 이미지 URL 다운로드 중: {image_url}")
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+        
+        # 이미지 로드
+        image = Image.open(BytesIO(response.content)).convert('RGB')
+        print(f"✅ 이미지 로드 완료: {image.size}")
+        
+        # CLIP 임베딩 생성
+        inputs = clip_processor(images=image, return_tensors="pt").to(device)
+        
+        with torch.no_grad():
+            image_features = clip_model.get_image_features(**inputs)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        
+        query_vector = image_features.cpu().numpy().astype('float32')
+        
+        # FAISS 검색
+        distances, indices = faiss_index.search(query_vector, top_k)
+        
+        # 결과 포맷팅
+        results = []
+        for rank, (dist, idx) in enumerate(zip(distances[0], indices[0]), 1):
+            idx_str = str(idx)
+            if idx_str in metadata_mapping:
+                meta = metadata_mapping[idx_str]
+                
+                # 거리를 유사도로 변환 (0~1, 높을수록 유사)
+                similarity = 1.0 / (1.0 + float(dist))
+                
+                results.append(SearchResult(
+                    rank=rank,
+                    image_id=int(idx),
+                    similarity=round(similarity, 4),
+                    distance=round(float(dist), 4),
+                    genre=meta['genre'],
+                    filename=meta['filename'],
+                    image_path=meta['path'],
+                    release_id=meta.get('release_id'),
+                    title=meta.get('title')
+                ))
+        
+        query_time = (time.time() - start_time) * 1000  # ms
+        
+        return SearchResponse(
+            success=True,
+            query_time_ms=round(query_time, 2),
+            total_results=len(results),
+            results=results
+        )
+        
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"이미지 URL 다운로드 실패: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"검색 실패: {str(e)}")
 

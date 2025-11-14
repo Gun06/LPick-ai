@@ -334,6 +334,23 @@
             white-space: nowrap;
         }
 
+        .result-title {
+            color: #333;
+            font-size: 1em;
+            font-weight: bold;
+            margin-top: 8px;
+            margin-bottom: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-release-id {
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+
         /* 메시지 */
         .message {
             padding: 15px 20px;
@@ -659,6 +676,9 @@
 
             const similarityPercent = (result.similarity * 100).toFixed(1);
 
+            const title = result.title || '제목 없음';
+            const releaseId = result.release_id ? `ID: ${result.release_id}` : 'ID: -';
+            
             card.innerHTML = `
                 <img class="result-image" src="${API_URL}/image/${result.image_id}" alt="${result.filename}">
                 <div class="result-info">
@@ -667,6 +687,8 @@
                         <span class="result-similarity">${similarityPercent}%</span>
                     </div>
                     <div class="result-genre">${result.genre}</div>
+                    <div class="result-title" title="${title}">${title}</div>
+                    <div class="result-release-id">${releaseId}</div>
                     <div class="result-filename" title="${result.filename}">${result.filename}</div>
                 </div>
             `;
